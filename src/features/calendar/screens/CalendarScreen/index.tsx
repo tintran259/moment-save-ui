@@ -54,44 +54,45 @@ export const CalendarScreen: React.FC = () => {
   ), []);
 
   return (
-    <AppLayout swipeDisabled={viewerIndex !== null}>
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" />
-        </View>
-      ) : (months ?? []).length === 0 ? (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.emptyText}>Chưa có khoản chi nào</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={months}
-          keyExtractor={keyExtractor}
-          renderItem={renderMonth}
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-          initialNumToRender={2}
-          maxToRenderPerBatch={2}
-          windowSize={5}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={handleRefresh}
-              tintColor="#8E8E93"
-            />
-          }
-          ListFooterComponent={ListFooter}
-        />
-      )}
+    <>
+      <AppLayout swipeDisabled={viewerIndex !== null}>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" />
+          </View>
+        ) : (months ?? []).length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.emptyText}>Chưa có khoản chi nào</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={months}
+            keyExtractor={keyExtractor}
+            renderItem={renderMonth}
+            contentContainerStyle={styles.scroll}
+            showsVerticalScrollIndicator={false}
+            initialNumToRender={2}
+            maxToRenderPerBatch={2}
+            windowSize={5}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefetching}
+                onRefresh={handleRefresh}
+                tintColor="#8E8E93"
+              />
+            }
+            ListFooterComponent={ListFooter}
+          />
+        )}
+      </AppLayout>
 
       {viewerIndex !== null && (
         <PhotoViewerModal
-          visible
           expenses={viewerExpenses}
           initialIndex={viewerIndex}
           onClose={() => setViewerIndex(null)}
         />
       )}
-    </AppLayout>
+    </>
   );
 };

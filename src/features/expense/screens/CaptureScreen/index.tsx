@@ -1,11 +1,11 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
-  View, Image, Text, TouchableOpacity, Animated,
+  View, Text, TouchableOpacity, Animated,
 } from 'react-native';
 import { showToast } from '@/utils/toast';
 import { CameraView, CameraType, FlashMode, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import { Ionicons, MaterialCommunityIcons, FontAwesome6 } from '@expo/vector-icons';
+import { Ionicons, FontAwesome6 } from '@expo/vector-icons';
 import { useUploadImage } from '../../hooks/useUploadImage';
 import { useCreateExpense } from '../../hooks/useCreateExpense';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -56,7 +56,7 @@ export const CaptureScreen: React.FC = () => {
   const [permission, requestPermission] = useCameraPermissions();
   const { upload, isUploading } = useUploadImage();
   const { mutate: createExpense, isPending: isCreating } = useCreateExpense();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
 
   const handleFlip = useCallback(() => {
     Animated.sequence([
@@ -132,7 +132,7 @@ export const CaptureScreen: React.FC = () => {
     });
   };
 
-  const handleSave = async (amount: number, locationName?: string) => {
+  const handleSave = async (amount: number, locationName?: string, coords?: { latitude: number; longitude: number }) => {
     if (!amount || amount <= 0) {
       showToast.info('Vui lòng nhập số tiền');
       return;
@@ -145,8 +145,8 @@ export const CaptureScreen: React.FC = () => {
           thumbnailUrl,
           amount,
           expenseDate: todayVNISO(),
-          latitude: photoMeta?.coords?.latitude,
-          longitude: photoMeta?.coords?.longitude,
+          latitude: coords?.latitude ?? photoMeta?.coords?.latitude,
+          longitude: coords?.longitude ?? photoMeta?.coords?.longitude,
           locationName: locationName ?? undefined,
         },
         {

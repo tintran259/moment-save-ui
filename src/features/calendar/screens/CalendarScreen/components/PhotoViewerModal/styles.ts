@@ -13,6 +13,7 @@ export const THUMB_STRIDE = THUMB_BOX + THUMB_GAP;
 export const THUMB_H_PAD = Math.round(SCREEN_W / 2 - THUMB_BOX / 2 - THUMB_GAP / 2);
 
 export const styles = StyleSheet.create({
+  viewerRoot: { zIndex: 9999 },
   // kept for compat; new background uses bgBase + bgOverlay
   backdrop:  { backgroundColor: '#111' },
   bgBase:    { backgroundColor: '#0a0a0a' },
@@ -60,15 +61,30 @@ export const styles = StyleSheet.create({
     backgroundColor: '#2A2A2A',
   },
 
-  captionRow: {
+  captionWrapper: {
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 14,
+    gap: 6,
+  },
+  captionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   captionAmount: { color: '#fff', fontSize: 17, fontWeight: '700', letterSpacing: 0.2 },
   captionDate:   { color: 'rgba(255,255,255,0.45)', fontSize: 12, fontWeight: '400' },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  locationText: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 12,
+    fontWeight: '400',
+    flexShrink: 1,
+  },
 
   thumbStrip: {
     paddingHorizontal: THUMB_H_PAD,

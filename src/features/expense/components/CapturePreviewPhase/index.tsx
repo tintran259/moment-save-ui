@@ -17,12 +17,17 @@ interface PhotoMeta {
   takenAt?: Date;
 }
 
+interface ResolvedCoords {
+  latitude: number;
+  longitude: number;
+}
+
 interface CapturePreviewPhaseProps {
   imageUri: string;
   isSubmitting: boolean;
   isUploading: boolean;
   onRetake: () => void;
-  onSave: (amount: number, locationName?: string) => void;
+  onSave: (amount: number, locationName?: string, coords?: ResolvedCoords) => void;
   photoMeta?: PhotoMeta;
 }
 
@@ -37,6 +42,7 @@ export const CapturePreviewPhase: React.FC<CapturePreviewPhaseProps> = ({
   const [rawAmount, setRawAmount] = useState('');
   const [display, setDisplay] = useState('');
   const [locationName, setLocationName] = useState('');
+  const [resolvedCoords, setResolvedCoords] = useState<ResolvedCoords | undefined>(undefined);
   const [savedToDevice, setSavedToDevice] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -87,6 +93,7 @@ export const CapturePreviewPhase: React.FC<CapturePreviewPhaseProps> = ({
 
   useEffect(() => {
     setLocationName('');
+    setResolvedCoords(undefined);
     let cancelled = false;
 
     (async () => {
@@ -96,9 +103,10 @@ export const CapturePreviewPhase: React.FC<CapturePreviewPhaseProps> = ({
           const { status } = await Location.requestForegroundPermissionsAsync();
           if (status !== 'granted' || cancelled) return;
           const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          coords = loc.coords;
+          coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
         }
         if (cancelled) return;
+        setResolvedCoords(coords);
         const [place] = await Location.reverseGeocodeAsync(coords);
         if (place && !cancelled) {
           const parts = [place.subregion ?? place.district, place.city ?? place.region].filter(Boolean);
@@ -112,10 +120,14 @@ export const CapturePreviewPhase: React.FC<CapturePreviewPhaseProps> = ({
     return () => { cancelled = true; };
   }, [photoMeta]);
 
+  const MAX_AMOUNT = 999_999_999_999;
+
   const handleAmountChange = (text: string) => {
     const raw = text.replace(/\D/g, '');
+    const num = Number(raw);
+    if (raw && num > MAX_AMOUNT) return;
     setRawAmount(raw);
-    setDisplay(raw ? Number(raw).toLocaleString('vi-VN') : '');
+    setDisplay(raw ? num.toLocaleString('vi-VN') : '');
   };
 
   const handleSaveToDevice = async () => {
@@ -201,7 +213,7 @@ export const CapturePreviewPhase: React.FC<CapturePreviewPhaseProps> = ({
               { backgroundColor: colors.primary, shadowColor: colors.primary },
               isSubmitting && styles.saveCircleDisabled,
             ]}
-            onPress={() => onSave(Number(rawAmount), locationName || undefined)}
+            onPress={() => onSave(Number(rawAmount), locationName || undefined, resolvedCoords)}
             disabled={isSubmitting}
             activeOpacity={0.8}
           >

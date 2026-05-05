@@ -15,141 +15,167 @@ interface Props {
   year: number;
 }
 
+interface PeriodCardProps {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  spent: number;
+  limit: number;
+  anim: Animated.Value;
+}
+
+const PeriodCard: React.FC<PeriodCardProps> = ({ icon, label, spent, limit, anim }) => {
+  const { colors } = useTheme();
+
+  const pct        = spentPercent(spent, limit);
+  const status     = goalStatus(pct);
+  const color      = STATUS_COLORS[status];
+  const exceeded   = status === 'exceeded';
+  const warning    = status === 'warning';
+  const overAmount = spent - limit;
+  const remaining  = limit - spent;
+
+  const barW = anim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] });
+
+  const heroColor    = exceeded ? color : warning ? color : colors.text;
+  const insightColor = exceeded ? color : warning ? color : colors.textTertiary;
+
+  return (
+    <View style={[
+      styles.periodCard,
+      {
+        backgroundColor: colors.surface,
+        borderColor: exceeded ? color + '50' : warning ? color + '30' : colors.border,
+      },
+    ]}>
+      <View style={styles.periodHeader}>
+        <View style={styles.periodLabelRow}>
+          <Ionicons name={icon} size={12} color={colors.textTertiary} />
+          <Text style={[styles.periodLabel, { color: colors.textSecondary }]}>{label}</Text>
+        </View>
+        <View style={[styles.pctPill, { backgroundColor: exceeded ? color : color + '1A' }]}>
+          {exceeded && (
+            <Ionicons name="warning" size={9} color="#fff" style={{ marginRight: 2 }} />
+          )}
+          <Text style={[styles.pctText, { color: exceeded ? '#fff' : color }]}>
+            {Math.min(Math.round(pct), 999)}%
+          </Text>
+        </View>
+      </View>
+
+      <Text style={[styles.heroAmount, { color: heroColor }]}>
+        {formatCompact(spent)}<Text style={styles.heroUnit}> ₫</Text>
+      </Text>
+
+      <View style={[styles.track, { backgroundColor: colors.border }]}>
+        <Animated.View style={[styles.fill, { width: barW, backgroundColor: color }]} />
+      </View>
+
+      <View style={styles.insightRow}>
+        {exceeded ? (
+          <>
+            <Ionicons name="trending-up-outline" size={12} color={color} />
+            <Text style={[styles.insightText, { color: insightColor }]}>
+              Vượt <Text style={styles.insightBold}>{formatCompact(overAmount)} ₫</Text>
+              {' '}· mục tiêu {formatCompact(limit)} ₫
+            </Text>
+          </>
+        ) : (
+          <Text style={[styles.insightText, { color: insightColor }]}>
+            Còn lại{' '}
+            <Text style={[styles.insightBold, { color: insightColor }]}>
+              {formatCompact(remaining)} ₫
+            </Text>
+            {' '}· mục tiêu {formatCompact(limit)} ₫
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+};
+
 export const GoalTracker: React.FC<Props> = ({ report, year }) => {
   const { colors } = useTheme();
-  const { goal } = useGoal();
-  const router = useRouter();
+  const { goal }   = useGoal();
+  const router     = useRouter();
   const { data: stats } = useReportStatistics();
 
-  console.log("report:", report);
-
-
-  const todayAnim = useRef(new Animated.Value(0)).current;
   const monthAnim = useRef(new Animated.Value(0)).current;
-  const yearAnim = useRef(new Animated.Value(0)).current;
+  const yearAnim  = useRef(new Animated.Value(0)).current;
 
-  // Derive today/month from the monthly report so data is always consistent
-  // with the DailyBarChart (same data source). yearTotal comes from statistics
-  // since the monthly report only covers the selected month.
-  const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' });
-  const todayGroup = report?.dailyGroups.find(g => g.date === todayStr);
-  const todayTotal = todayGroup?.total ?? 0;
   const monthTotal = report?.totalAmount ?? 0;
-  const yearTotal = stats?.yearTotal ?? 0;
+  const yearTotal  = stats?.yearTotal ?? 0;
 
   useEffect(() => {
     if (!goal) return;
-    const limits = getGoalLimits(goal.sourceField, goal.sourceValue);
-    const tPct = Math.min(spentPercent(todayTotal, limits.daily), 100);
-    const mPct = Math.min(spentPercent(monthTotal, limits.monthly), 100);
-    const yPct = Math.min(spentPercent(yearTotal, limits.yearly), 100);
+    const { monthly, yearly } = getGoalLimits(goal.sourceField, goal.sourceValue);
 
-    todayAnim.setValue(0);
+    const mPct = Math.min(spentPercent(monthTotal, monthly), 100);
+    const yPct = Math.min(spentPercent(yearTotal,  yearly),  100);
+
     monthAnim.setValue(0);
     yearAnim.setValue(0);
-    Animated.stagger(80, [
-      Animated.spring(todayAnim, { toValue: tPct, damping: 16, stiffness: 130, useNativeDriver: false }),
-      Animated.spring(monthAnim, { toValue: mPct, damping: 16, stiffness: 130, useNativeDriver: false }),
-      Animated.spring(yearAnim, { toValue: yPct, damping: 16, stiffness: 130, useNativeDriver: false }),
+    Animated.stagger(90, [
+      Animated.spring(monthAnim, { toValue: mPct, damping: 20, stiffness: 110, useNativeDriver: false }),
+      Animated.spring(yearAnim,  { toValue: yPct, damping: 20, stiffness: 110, useNativeDriver: false }),
     ]).start();
-  }, [goal, todayTotal, monthTotal, yearTotal]);
+  }, [goal, monthTotal, yearTotal]);
 
+  // ── No goal state ─────────────────────────────────────────────────────────
   if (!goal) {
     return (
       <TouchableOpacity
-        style={[styles.banner, { backgroundColor: colors.primaryLight, borderColor: colors.primary + '44' }]}
+        style={[styles.emptyBanner, { backgroundColor: colors.primaryLight, borderColor: colors.primary + '33' }]}
         onPress={() => router.push('/(onboarding)/goal-setup')}
-        activeOpacity={0.8}
+        activeOpacity={0.85}
       >
-        <Ionicons name="flag-outline" size={18} color={colors.primary} />
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.bannerTitle, { color: colors.primary }]}>Chưa có mục tiêu chi tiêu</Text>
-          <Text style={[styles.bannerSub, { color: colors.primary }]}>Nhấn để thiết lập ngay →</Text>
+        <View style={[styles.emptyIconWrap, { backgroundColor: colors.primary + '22' }]}>
+          <Ionicons name="flag-outline" size={18} color={colors.primary} />
         </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.emptyTitle, { color: colors.primary }]}>Chưa có mục tiêu</Text>
+          <Text style={[styles.emptySub, { color: colors.primary + 'BB' }]}>
+            Thiết lập để theo dõi chi tiêu
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color={colors.primary + '88'} />
       </TouchableOpacity>
     );
   }
 
   const limits = getGoalLimits(goal.sourceField, goal.sourceValue);
-  const isExceeded = monthTotal > limits.monthly;
-  const monthDiff = Math.abs(monthTotal - limits.monthly);
 
-  const rows: {
-    label: string;
-    icon: React.ComponentProps<typeof Ionicons>['name'];
-    spent: number;
-    limit: number;
-    pct: number;
-    anim: Animated.Value;
-  }[] = [
-      { label: 'Hôm nay', icon: 'sunny-outline', spent: todayTotal, limit: limits.daily, pct: spentPercent(todayTotal, limits.daily), anim: todayAnim },
-      { label: 'Tháng hiện tại', icon: 'calendar-outline', spent: monthTotal, limit: limits.monthly, pct: spentPercent(monthTotal, limits.monthly), anim: monthAnim },
-      { label: `Năm ${year || new Date().getFullYear()} `, icon: 'stats-chart-outline', spent: yearTotal, limit: limits.yearly, pct: spentPercent(yearTotal, limits.yearly), anim: yearAnim },
-    ];
+  const anyExceeded =
+    spentPercent(monthTotal, limits.monthly) >= 100 ||
+    spentPercent(yearTotal,  limits.yearly)  >= 100;
+
+  const rows = [
+    { icon: 'calendar-outline'    as const, label: 'Tháng này', spent: monthTotal, limit: limits.monthly, anim: monthAnim },
+    { icon: 'stats-chart-outline' as const, label: `Năm ${year || new Date().getFullYear()}`, spent: yearTotal, limit: limits.yearly, anim: yearAnim },
+  ];
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      {/* Header */}
-      <View style={styles.goalHeader}>
+    <View style={[styles.wrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      {/* ── Section header ────────────────────────────────────────────────── */}
+      <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Mục tiêu chi tiêu</Text>
-        {isExceeded && (
-          <View style={styles.exceedBadge}>
-            <Ionicons name="warning-outline" size={12} color="#EF4444" />
-            <Text style={styles.exceedText}>Vượt mức</Text>
+        {anyExceeded ? (
+          <View style={styles.exceededChip}>
+            <Ionicons name="warning" size={11} color="#EF4444" />
+            <Text style={styles.exceededChipText}>Đã vượt mức</Text>
+          </View>
+        ) : (
+          <View style={styles.safeChip}>
+            <Ionicons name="checkmark-circle" size={11} color="#10B981" />
+            <Text style={styles.safeChipText}>Đang kiểm soát</Text>
           </View>
         )}
       </View>
 
-      {/* Progress rows */}
-      <View style={styles.goalRows}>
-        {rows.map(row => {
-          const color = STATUS_COLORS[goalStatus(row.pct)];
-          const barW = row.anim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] });
-
-          return (
-            <View key={row.label} style={styles.goalRow}>
-              <View style={styles.goalRowTop}>
-                <View style={styles.goalRowLeft}>
-                  <Ionicons name={row.icon} size={14} color={colors.textTertiary} />
-                  <Text style={[styles.goalRowLabel, { color: colors.text }]}>{row.label}</Text>
-                </View>
-                <View style={styles.goalRowRight}>
-                  <Text style={[styles.goalSpent, { color: colors.text }]}>{formatCompact(row.spent)}</Text>
-                  <Text style={[styles.goalLimit, { color: colors.textTertiary }]}>
-                    {' / '}{formatCompact(row.limit)} ₫
-                  </Text>
-                  <View style={[styles.pctBadge, { backgroundColor: color + '22' }]}>
-                    <Text style={[styles.pctText, { color }]}>{Math.round(row.pct)}%</Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={[styles.goalTrack, { backgroundColor: colors.border }]}>
-                <Animated.View style={[styles.goalFill, { width: barW, backgroundColor: color }]} />
-              </View>
-
-              {row.pct >= 100 && (
-                <Text style={[styles.goalWarning, { color: STATUS_COLORS.exceeded }]}>
-                  ⚠ Đã vượt {formatCompact(row.spent - row.limit)} ₫
-                </Text>
-              )}
-            </View>
-          );
-        })}
-      </View>
-
-      {/* Monthly result summary */}
-      <View style={[styles.resultRow, { borderTopColor: colors.border }]}>
-        <Ionicons
-          name={!isExceeded ? 'checkmark-circle' : 'close-circle'}
-          size={16}
-          color={!isExceeded ? STATUS_COLORS.safe : STATUS_COLORS.exceeded}
-        />
-        <Text style={[styles.resultText, { color: !isExceeded ? STATUS_COLORS.safe : STATUS_COLORS.exceeded }]}>
-          {!isExceeded
-            ? `Tháng này tiết kiệm ${formatCompact(monthDiff)} ₫`
-            : `Tháng này vượt ${formatCompact(monthDiff)} ₫`}
-        </Text>
+      {/* ── Month + Year cards ────────────────────────────────────────────── */}
+      <View style={styles.cardsWrapper}>
+        {rows.map(row => (
+          <PeriodCard key={row.label} {...row} />
+        ))}
       </View>
     </View>
   );

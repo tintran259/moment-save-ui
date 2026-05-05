@@ -1,7 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useMonthlyReport } from '@/features/report/hooks/useMonthlyReport';
 import { formatCompact } from '@/utils/format';
 import { StatCard } from '../StatCard';
 import { styles } from './styles';
@@ -13,6 +12,8 @@ interface Props {
 
 export const StatsGrid: React.FC<Props> = ({ report }) => {
   const { colors } = useTheme();
+
+  if (!report) return null;
 
   const totalAmount = report?.totalAmount ?? 0;
   const txCount = report?.totalCount ?? 0;

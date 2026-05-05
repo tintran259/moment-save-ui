@@ -23,10 +23,12 @@ export const GoalProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    goalService.getGoal().then((g) => {
-      setGoal(g);
-      setIsLoading(false);
-    });
+    goalService.getGoal()
+      .then((g) => {
+        setGoal(g);
+        setIsLoading(false);
+      })
+      .catch(() => setIsLoading(false));
   }, []);
 
   const saveGoal = useCallback(async (g: UserGoal) => {
@@ -39,8 +41,13 @@ export const GoalProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setGoal(null);
   }, []);
 
+  const value = React.useMemo(
+    () => ({ goal, isLoading, hasGoal: !!goal, saveGoal, clearGoal }),
+    [goal, isLoading, saveGoal, clearGoal],
+  );
+
   return (
-    <GoalContext.Provider value={{ goal, isLoading, hasGoal: !!goal, saveGoal, clearGoal }}>
+    <GoalContext.Provider value={value}>
       {children}
     </GoalContext.Provider>
   );

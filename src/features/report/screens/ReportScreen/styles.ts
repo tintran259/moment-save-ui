@@ -96,4 +96,25 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 32,
+  },
+  errorText: {
+    fontSize: 15,
+    textAlign: 'center',
+  },
+  retryBtn: {
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  retryBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
 });

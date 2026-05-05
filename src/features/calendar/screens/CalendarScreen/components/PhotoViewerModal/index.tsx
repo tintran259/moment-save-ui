@@ -2,7 +2,6 @@ import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from '
 import {
   Animated,
   FlatList,
-  Modal,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Expense } from '@/types/expense.types';
 import { styles, CARD_W, PEEK, THUMB_STRIDE, THUMB_H_PAD } from './styles';
 import AntDesign from '@expo/vector-icons/AntDesign';
+import { Ionicons } from '@expo/vector-icons';
 
 const DOW_VI = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
 
@@ -23,7 +23,6 @@ function parseDateLabel(dateStr: string): { year: string; dayLabel: string } {
   return { year: String(y), dayLabel: `tháng ${m} ${DOW_VI[dow]}` };
 }
 
-// Append Cloudinary transform without breaking the URL structure
 function cloudinaryTransform(url: string, transform: string): string {
   return url.replace('/upload/', `/upload/${transform}/`);
 }
@@ -106,33 +105,41 @@ const PhotoItem = memo<PhotoItemProps>(({ item, photoScale, photoOpacity }) => {
             placeholderContentFit="cover"
           />
         </View>
-        <View style={styles.captionRow}>
-          <Text style={styles.captionAmount}>{item.amount.toLocaleString('vi-VN')} ₫</Text>
-          <Text style={styles.captionDate}>{item.expenseDate}</Text>
+        <View style={styles.captionWrapper}>
+          <View style={styles.captionRow}>
+            <Text style={styles.captionAmount}>{item.amount.toLocaleString('vi-VN')} ₫</Text>
+            <Text style={styles.captionDate}>{item.expenseDate}</Text>
+          </View>
+          {(item.locationName ?? (item.latitude != null && item.longitude != null)) && (
+            <View style={styles.locationRow}>
+              <Ionicons name="location-outline" size={12} color="rgba(255,255,255,0.5)" />
+              <Text style={styles.locationText} numberOfLines={1}>
+                {item.locationName ?? `${item.latitude?.toFixed(4)}, ${item.longitude?.toFixed(4)}`}
+              </Text>
+            </View>
+          )}
         </View>
       </Animated.View>
     </View>
   );
 });
 
-// ── Modal ─────────────────────────────────────────────────────────────────────
+// ── Viewer ────────────────────────────────────────────────────────────────────
 interface PhotoViewerModalProps {
-  visible: boolean;
   expenses: Expense[];
   initialIndex: number;
   onClose: () => void;
 }
 
 export const PhotoViewerModal: React.FC<PhotoViewerModalProps> = ({
-  visible,
   expenses,
   initialIndex,
   onClose,
 }) => {
   const [activeIndex, setActiveIndex] = useState(initialIndex);
 
-  const listRef      = useRef<FlatList>(null);
-  const thumbListRef = useRef<FlatList>(null);
+  const listRef        = useRef<FlatList>(null);
+  const thumbListRef   = useRef<FlatList>(null);
   const hasInitialized = useRef(false);
 
   const { year, dayLabel } = parseDateLabel(
@@ -146,7 +153,6 @@ export const PhotoViewerModal: React.FC<PhotoViewerModalProps> = ({
   const stripTransY  = useRef(new Animated.Value(40)).current;
   const animIndex    = useRef(new Animated.Value(initialIndex)).current;
 
-  // Tiny Cloudinary version for blur background (~3 KB instead of 2 MB)
   const blurBgUrl = useMemo(() => {
     const url = expenses[activeIndex]?.imageUrl ?? '';
     return url.includes('/upload/') ? cloudinaryTransform(url, 'w_80,q_10') : url;
@@ -173,26 +179,15 @@ export const PhotoViewerModal: React.FC<PhotoViewerModalProps> = ({
     });
   }, [activeIndex, expenses]);
 
-  // Open / close
+  // Open animation — runs once on mount
   useEffect(() => {
-    if (!visible) {
-      hasInitialized.current = false;
-      return;
+    for (let offset = -2; offset <= 2; offset++) {
+      const exp = expenses[initialIndex + offset];
+      if (exp) {
+        Image.prefetch(exp.imageUrl);
+        if (exp.thumbnailUrl) Image.prefetch(exp.thumbnailUrl);
+      }
     }
-
-    bgOpacity.setValue(0);
-    photoOpacity.setValue(0);
-    photoScale.setValue(0.88);
-    headerTransY.setValue(-24);
-    stripTransY.setValue(40);
-    animIndex.setValue(initialIndex);
-    setActiveIndex(initialIndex);
-
-    // Prefetch all images in the day's list immediately on open
-    expenses.forEach(exp => {
-      Image.prefetch(exp.imageUrl);
-      if (exp.thumbnailUrl) Image.prefetch(exp.thumbnailUrl);
-    });
 
     setTimeout(() => {
       listRef.current?.scrollToOffset({ offset: initialIndex * CARD_W, animated: false });
@@ -211,7 +206,7 @@ export const PhotoViewerModal: React.FC<PhotoViewerModalProps> = ({
       Animated.spring(headerTransY, { toValue: 0, damping: 18, stiffness: 200, useNativeDriver: true }),
       Animated.spring(stripTransY,  { toValue: 0, damping: 18, stiffness: 200, useNativeDriver: true }),
     ]).start();
-  }, [visible, initialIndex]);
+  }, []);
 
   const handleClose = () => {
     Animated.parallel([
@@ -220,8 +215,7 @@ export const PhotoViewerModal: React.FC<PhotoViewerModalProps> = ({
       Animated.spring(photoScale,   { toValue: 0.9, damping: 20, stiffness: 260, useNativeDriver: true }),
       Animated.timing(headerTransY, { toValue: -20, duration: 180, useNativeDriver: true }),
       Animated.timing(stripTransY,  { toValue: 40, duration: 180, useNativeDriver: true }),
-    ]);
-    onClose();
+    ]).start(() => onClose());
   };
 
   const onViewableItemsChanged = useCallback(
@@ -280,10 +274,12 @@ export const PhotoViewerModal: React.FC<PhotoViewerModalProps> = ({
   }, []);
 
   return (
-    <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
+    <View style={[StyleSheet.absoluteFill, styles.viewerRoot]}>
 
-      {/* ── Background: always-dark base + blurred tiny photo ─────────────── */}
+      {/* ── Dark base — always visible, no animation → no white flash ──────── */}
       <View style={[StyleSheet.absoluteFill, styles.bgBase]} />
+
+      {/* ── Blurred photo overlay ────────────────────────────────────────────── */}
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: bgOpacity }]}>
         <Image
           source={{ uri: blurBgUrl }}
@@ -314,6 +310,7 @@ export const PhotoViewerModal: React.FC<PhotoViewerModalProps> = ({
         {/* ── Photo carousel ──────────────────────────────────────────────── */}
         <FlatList
           ref={listRef}
+          style={{ flex: 1 }}
           data={expenses}
           keyExtractor={(item, i) => `photo-${item.id}-${i}`}
           horizontal
@@ -352,6 +349,6 @@ export const PhotoViewerModal: React.FC<PhotoViewerModalProps> = ({
         </Animated.View>
 
       </SafeAreaView>
-    </Modal>
+    </View>
   );
 };

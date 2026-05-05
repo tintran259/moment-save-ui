@@ -32,7 +32,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const toggleTheme = () => {
     setTheme((prev) => {
       const next = prev === 'light' ? 'dark' : 'light';
-      AsyncStorage.setItem(THEME_STORAGE_KEY, next);
+      AsyncStorage.setItem(THEME_STORAGE_KEY, next).catch(() => {});
       return next;
     });
   };

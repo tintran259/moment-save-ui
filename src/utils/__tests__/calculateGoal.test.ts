@@ -70,7 +70,7 @@ describe('getGoalLimits — sourceField: monthly', () => {
   });
 
   it('TC-L08: daily changes for February (28 days) vs April (30 days)', () => {
-    const feb   = getGoalLimits('monthly', 6_000_000, new Date('2025-02-15'));
+    const feb = getGoalLimits('monthly', 6_000_000, new Date('2025-02-15'));
     const april = getGoalLimits('monthly', 6_000_000, new Date('2026-04-15'));
     expect(feb.daily).toBeGreaterThan(april.daily); // fewer days → higher daily limit
   });
@@ -173,14 +173,14 @@ describe('Goal tracker end-to-end scenarios', () => {
 
   it('TC-E01: daily goal 200k — spent 150k today → safe (75%)', () => {
     const limits = getGoalLimits('daily', 200_000, APRIL);
-    const pct    = spentPercent(150_000, limits.daily);
+    const pct = spentPercent(150_000, limits.daily);
     expect(pct).toBe(75);
     expect(goalStatus(pct)).toBe('safe');
   });
 
   it('TC-E02: monthly goal 5M — spent 4.1M → warning (82%)', () => {
     const limits = getGoalLimits('monthly', 5_000_000, APRIL);
-    const pct    = spentPercent(4_100_000, limits.monthly);
+    const pct = spentPercent(4_100_000, limits.monthly);
     expect(pct).toBe(82);
     expect(goalStatus(pct)).toBe('warning');
   });
@@ -196,7 +196,7 @@ describe('Goal tracker end-to-end scenarios', () => {
 
   it('TC-E04: yearly goal 60M — spent 15M → safe (25%)', () => {
     const limits = getGoalLimits('yearly', 60_000_000, APRIL);
-    const pct    = spentPercent(15_000_000, limits.yearly);
+    const pct = spentPercent(15_000_000, limits.yearly);
     expect(pct).toBe(25);
     expect(goalStatus(pct)).toBe('safe');
   });

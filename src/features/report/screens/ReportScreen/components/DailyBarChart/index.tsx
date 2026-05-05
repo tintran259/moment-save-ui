@@ -1,88 +1,117 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Text, View } from 'react-native';
+import { Animated, ScrollView, Text, View } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useGoal } from '@/contexts/GoalContext';
 import { MonthlyReport } from '@/features/report/api/report.api';
 import { getGoalLimits } from '@/utils/calculateGoal';
-import { formatCompact } from '@/utils/format';
 import { SemanticColors } from '@/constants/colors';
-import { styles, BAR_MAX_W, MAX_BARS, N_BAR_ANIMS } from './styles';
+import { styles, BAR_MAX_H, N_DAYS_MAX } from './styles';
 
 interface Props {
   report: MonthlyReport | undefined;
+  year: number;
+  month: number;
 }
 
-export const DailyBarChart: React.FC<Props> = ({ report }) => {
+export const DailyBarChart: React.FC<Props> = ({ report, year, month }) => {
   const { colors, isDark } = useTheme();
   const { goal } = useGoal();
 
   const barAnims = useRef(
-    Array.from({ length: N_BAR_ANIMS }, () => new Animated.Value(0)),
+    Array.from({ length: N_DAYS_MAX }, () => new Animated.Value(0)),
   ).current;
 
-  const topDays = (report?.dailyGroups ?? []).slice(0, MAX_BARS);
-  const maxDayTotal = topDays.length > 0 ? Math.max(...topDays.map(d => d.total)) : 1;
   const dailyLimit = goal ? getGoalLimits(goal.sourceField, goal.sourceValue).daily : 0;
 
-  useEffect(() => {
-    if (!report) return;
-    barAnims.forEach(b => b.setValue(0));
-    Animated.stagger(55, topDays.map((_, i) =>
-      Animated.spring(barAnims[i], { toValue: 1, damping: 14, stiffness: 110, useNativeDriver: false }),
-    )).start();
-  }, [report?.dailyGroups]);
+  const daysInMonth = year > 0 && month > 0 ? new Date(year, month, 0).getDate() : 0;
+  const dailyMap = new Map((report?.dailyGroups ?? []).map(g => [g.date, g.total]));
 
-  const getBarColor = (rank: number, total: number) => {
+  const days = Array.from({ length: daysInMonth }, (_, i) => {
+    const d = i + 1;
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    return { day: d, date: dateStr, total: dailyMap.get(dateStr) ?? 0 };
+  });
+
+  const maxTotal = Math.max(...days.map(d => d.total), 1);
+  const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' });
+
+  useEffect(() => {
+    if (daysInMonth === 0) return;
+    barAnims.forEach(b => b.setValue(0));
+    const animations = days.map((d, i) => {
+      const ratio = d.total > 0
+        ? goal && dailyLimit > 0
+          ? Math.min(d.total / dailyLimit, 1.2)
+          : d.total / maxTotal
+        : 0;
+      return Animated.spring(barAnims[i], {
+        toValue: ratio * BAR_MAX_H,
+        damping: 16,
+        stiffness: 120,
+        useNativeDriver: false,
+      });
+    });
+    Animated.stagger(25, animations).start();
+  }, [report?.dailyGroups, year, month]);
+
+  const getBarColor = (total: number): string => {
+    if (total === 0) return 'transparent';
     if (goal && dailyLimit > 0) {
       const pct = total / dailyLimit;
-      if (pct >= 1) return SemanticColors.danger;
-      if (pct >= 0.80) return SemanticColors.warning;
+      if (pct >= 1)   return SemanticColors.danger;
+      if (pct >= 0.8) return SemanticColors.warning;
       return SemanticColors.success;
     }
-    const opacity = Math.max(0.35, 1 - rank * 0.1);
-    return isDark ? `rgba(167,139,250,${opacity})` : `rgba(124,58,237,${opacity})`;
+    return isDark ? 'rgba(167,139,250,0.85)' : 'rgba(124,58,237,0.85)';
   };
+
+  if (daysInMonth === 0) return null;
+
+  const hasData = days.some(d => d.total > 0);
 
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>
-        Chi tiêu theo ngày (7 ngày gần nhất)
-      </Text>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Chi tiêu theo ngày</Text>
 
-      {topDays.length > 0 ? (
-        <View style={styles.barList}>
-          {topDays.map((d, i) => {
-            const hasGoal = goal && dailyLimit > 0;
-            const exceeded = hasGoal && d.total > dailyLimit;
-            const targetW = hasGoal
-              ? Math.min(d.total / dailyLimit, 1) * BAR_MAX_W
-              : (d.total / maxDayTotal) * BAR_MAX_W;
-
-            const barWidth = barAnims[i].interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, targetW],
-            });
-
-            const [, mm, dd] = d.date.split('-');
-            const dateLabel = `${dd}/${mm}`;
+      {hasData ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          nestedScrollEnabled={true}
+          directionalLockEnabled={true}
+          bounces={false}
+        >
+          {days.map((d, i) => {
+            const isToday = d.date === todayStr;
+            const barColor = getBarColor(d.total);
 
             return (
-              <View key={`${d.date}-${i}`} style={styles.barRow}>
-                <Text style={[styles.barDayLabel, { color: colors.textSecondary }]}>
-                  {dateLabel}
-                </Text>
-                <View style={[styles.barTrack, { backgroundColor: colors.barTrack }]}>
-                  <Animated.View
-                    style={[styles.barFill, { width: barWidth, backgroundColor: getBarColor(i, d.total) }]}
-                  />
+              <View key={d.date} style={styles.col}>
+                <View style={styles.barArea}>
+                  {d.total > 0 ? (
+                    <Animated.View
+                      style={[styles.bar, { height: barAnims[i], backgroundColor: barColor }]}
+                    />
+                  ) : (
+                    <View style={[styles.barFloor, { backgroundColor: colors.border }]} />
+                  )}
                 </View>
-                <Text style={[styles.barAmount, { color: exceeded ? SemanticColors.danger : colors.textSecondary }]}>
-                  {formatCompact(d.total)}
+                <Text
+                  style={[
+                    styles.dayLabel,
+                    {
+                      color: isToday ? colors.primary : colors.textTertiary,
+                      fontWeight: isToday ? '700' : '500',
+                    },
+                  ]}
+                >
+                  {String(d.day).padStart(2, '0')}
                 </Text>
               </View>
             );
           })}
-        </View>
+        </ScrollView>
       ) : (
         <Text style={[styles.emptyChart, { color: colors.textTertiary }]}>
           Không có dữ liệu trong tháng này.

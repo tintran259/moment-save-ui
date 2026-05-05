@@ -10,7 +10,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Logo } from '@/components/Logo';
+import { AppLogo } from '@/components/AppLogo';
 import { tokenService } from '@/services/token.service';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -93,7 +93,11 @@ export const Drawer: React.FC<DrawerProps> = ({
 
           {/* Profile section */}
           <View style={styles.profileSection}>
-            <Logo size={56} />
+            <AppLogo size="lg" />
+            <View style={styles.appNameRow}>
+              <Text style={[styles.appNameSpend, { color: colors.text }]}>Spend</Text>
+              <Text style={[styles.appNameLog, { color: colors.primary }]}>Log</Text>
+            </View>
             {phoneNumber ? (
               <Text style={[styles.phoneText, { color: colors.textSecondary }]}>{phoneNumber}</Text>
             ) : null}
@@ -193,15 +197,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 8,
   },
-  appName: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+  appNameRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+    marginTop: 4,
+  },
+  appNameSpend: {
+    fontSize: 20,
+    fontWeight: '300',
+    letterSpacing: -0.3,
+  },
+  appNameLog: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
   phoneText: {
-    color: '#94A3B8',
     fontSize: 13,
+    marginTop: 2,
   },
 
   divider: {

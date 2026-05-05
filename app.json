@@ -4,17 +4,34 @@
     "slug": "spendlog",
     "owner": "tintran",
     "version": "1.0.0",
+    "description": "Track your daily expenses by capturing photos with amounts and locations.",
     "orientation": "portrait",
     "scheme": "spendlog",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#7C3AED"
+    },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.spendlog.app",
+      "buildNumber": "1",
       "infoPlist": {
+        "NSCameraUsageDescription": "Spend Log uses the camera to capture expense photos.",
+        "NSPhotoLibraryUsageDescription": "Spend Log needs photo library access to attach existing photos to expenses.",
+        "NSPhotoLibraryAddUsageDescription": "Spend Log saves captured photos to your photo library.",
+        "NSLocationWhenInUseUsageDescription": "Spend Log uses your location to record where each expense was made.",
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
               "com.googleusercontent.apps.38422875346-ssfdpan6tpj2nsgv0ork8vvl6iuik7r7"
+            ]
+          },
+          {
+            "CFBundleURLSchemes": [
+              "fb796484679966886"
             ]
           }
         ],
@@ -28,9 +45,19 @@
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#7C3AED"
       },
-      "package": "com.spendlog.app"
+      "package": "com.spendlog.app",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -39,7 +66,15 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Spend Log dùng vị trí của bạn để hiển thị thời tiết địa phương."
+          "locationWhenInUsePermission": "Spend Log uses your location to record where each expense was made."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Spend Log needs photo library access to attach existing photos to expenses.",
+          "savePhotosPermission": "Spend Log saves captured photos to your photo library.",
+          "isAccessMediaLocationEnabled": true
         }
       ],
       "expo-web-browser",
@@ -47,6 +82,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
     }
   }
 }
